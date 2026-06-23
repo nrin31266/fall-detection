@@ -1,0 +1,23 @@
+# Core
+numpy==1.26.4
+pandas==2.2.2
+tqdm==4.66.4
+
+# Video processing
+opencv-python==4.10.0.84
+
+# Machine Learning
+scikit-learn==1.5.1
+
+# Deep Learning
+torch
+torchvision
+timm
+
+# Visualization
+matplotlib==3.9.1
+
+# Kaggle API
+kaggle==1.6.17
+# Config / dependency
+PyYAML==6.0.2
