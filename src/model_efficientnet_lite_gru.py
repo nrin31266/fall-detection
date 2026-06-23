@@ -8,7 +8,7 @@ class EfficientNetLiteGRU(nn.Module):
     EfficientNet-Lite0 + GRU for video fall detection.
 
     Input:
-        x: [B, T, C, H, W]
+        x: [B, T, C, H, W], pixel range [0, 1]
 
     Output:
         logits: [B, num_classes]
@@ -52,14 +52,27 @@ class EfficientNetLiteGRU(nn.Module):
             nn.Linear(hidden_size, num_classes),
         )
 
+        # ImageNet normalization for pretrained EfficientNet.
+        self.register_buffer(
+            "mean",
+            torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1),
+        )
+        self.register_buffer(
+            "std",
+            torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1),
+        )
+
     def forward(self, x):
         """
-        x: [B, T, C, H, W]
+        x: [B, T, C, H, W], pixel range [0, 1]
         """
         b, t, c, h, w = x.shape
 
         # [B, T, C, H, W] -> [B*T, C, H, W]
         x = x.view(b * t, c, h, w)
+
+        # Normalize before pretrained backbone.
+        x = (x - self.mean) / self.std
 
         # [B*T, feature_dim]
         features = self.backbone(x)
@@ -67,10 +80,10 @@ class EfficientNetLiteGRU(nn.Module):
         # [B*T, feature_dim] -> [B, T, feature_dim]
         features = features.view(b, t, -1)
 
-        # GRU output: [B, T, hidden_size]
+        # [B, T, hidden_size]
         gru_out, _ = self.gru(features)
 
-        # lấy hidden state ở frame cuối
+        # Use last time step.
         last_hidden = gru_out[:, -1, :]
 
         logits = self.classifier(last_hidden)
@@ -81,7 +94,6 @@ class EfficientNetLiteGRU(nn.Module):
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # pretrained=False để test nhanh, không cần tải weight
     model = EfficientNetLiteGRU(
         pretrained=False,
         freeze_backbone=True,
